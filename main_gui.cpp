@@ -12,6 +12,7 @@ void rot90(cv::Mat &image, bool revert){
 }
 
 void resize(cv::Mat &image, bool rotate = false) {
+    // If the user want to scale up rather left, we have to rotate the image memory representation
     if (rotate) {
         rot90(image, false);
     }
@@ -21,30 +22,38 @@ void resize(cv::Mat &image, bool rotate = false) {
 
     matrix<cv::Vec3b> image_matrix(image.rows, image.cols, (cv::Vec3b*)image.data);
 
-    cv::Mat gray;
+    // OpenCV semantics are bizare. Those are not necessarily stand-alone matrices
+    // but rather references to subparts of others.
+    cv::Mat gray, dx, dy, abs_dx, abs_dy, grad, output;
+
+    // Create a greyscale version of the image
     cvtColor(image, gray, CV_BGR2GRAY);
 
-    cv::Mat output;
-
-    cv::Mat dx, dy, abs_dx, abs_dy, grad;
+    // Applying Sobel on X-axis
     cv::Sobel(image, dx, CV_64F, 1, 0);
+    // Applying Sobel on Y-axis
     cv::Sobel(image, dy, CV_64F, 0, 1);
 
+    // Creating a uniform energy-map
     cv::convertScaleAbs( dx, abs_dx );
     cv::convertScaleAbs( dy, abs_dy );
     cv::addWeighted( abs_dx, 0.5, abs_dy, 0.5, 0, output );
+
+    // Finding the seam and registering the indexes to get rid off
     matrix<uint16_t > energy(output.rows, output.cols, (uint16_t*)output.data);
-
     matrix<uint_fast16_t> workset(energy.height, energy.width);
-
     std::vector<int> rem(energy.height);
+
+    // remove_seam_simded provides a handy Functor to get called back whenever the algorithm remove something.
     remove_seam_simded(energy, workset, [&rem] (auto const& r, auto const& c) {
         rem[r] = c;
     });
 
+    // Removing the seam
     for (int j = 0; j < image_matrix.height; ++j) {
         image_matrix.erase(j, rem[j]);
     }
+    // Creating the final image
     cv::Mat out(image.rows, image.cols - 1, image.type());
     for (int k = 0; k < image_matrix.height; ++k) {
         for (int j = 0; j < image_matrix.width - 1; ++j) {
@@ -67,13 +76,13 @@ void CallBackFunc(int event, int x, int y, int, void* data) {
     }
 }
 
-int main(int argc, char** argv ) {
-    if (argc != 2) {
-        printf("usage: DisplayImage.out <Image_Path>\n");
+int main(int ac, char** av ) {
+    if (ac != 2) {
+        std::cout << "usage: " << av[0] <<  "image_path" << std::endl;
         return -1;
     }
 
-    cv::Mat image = cv::imread(argv[1], 1);
+    cv::Mat image = cv::imread(av[1], 1);
     image.convertTo(image, CV_8UC3);
     cv::Mat image_backup = image;
     if (!image.data) {

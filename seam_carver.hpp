@@ -12,10 +12,12 @@
 template <typename U, typename Func>
 void remove_seam_simded(matrix<U> & energy, matrix<U> & workset, Func functor) {
     namespace bs = boost::simd;
+    //Filing the very first row directly from the energy map values
     bs::copy_n(energy.row_at(0), energy.width, workset.row_at(0));
     for (int r = 1; r < energy.height; ++r) {
-        workset.at(r, 0) = energy.at(r, 0) + std::min(workset.at(r - 1, 1), workset.at(r - 1, 0));
 
+        //The first and last values of every row remains special one, but with this approach there is no branching
+        workset.at(r, 0) = energy.at(r, 0) + std::min(workset.at(r - 1, 1), workset.at(r - 1, 0));
         auto current_row = workset.row_at(r), previous_row = workset.row_at(r-1);
 
         //Filling the array with max value
@@ -37,6 +39,8 @@ void remove_seam_simded(matrix<U> & energy, matrix<U> & workset, Func functor) {
     auto min_index = static_cast<int>(bs::min_element(energy_last_row, energy_last_row + energy.width - 1) - energy_last_row);
     energy.erase(energy.height - 1, min_index);
 
+    // Unfortunately this part remains messy, I was unable to get it to work with SIMD instruction-set.
+    // This is the main bottleneck of the implementation.
     for (int j = energy.height - 2; j >= 0; --j) {
         auto row_dp = workset.row_at(j);
         if (min_index != 0 && min_index != energy.width - 1) {

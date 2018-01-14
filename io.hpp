@@ -11,6 +11,9 @@
 
 #include "matrix.hpp"
 
+/*
+ * Highly optimized parsing of unsigned integers of a specified bit-lengthiness
+ */
 template <typename U>
 void read_input(matrix<U> &matrix, char const* buf, size_t size) {
     unsigned item = 0;
@@ -56,6 +59,9 @@ void read_input(matrix<U> &matrix, char const* buf, size_t size) {
     }
 }
 
+/*
+ * Magic table
+ */
 const char digit_pairs[201] = {
         "00010203040506070809"
                 "10111213141516171819"
@@ -69,6 +75,9 @@ const char digit_pairs[201] = {
                 "90919293949596979899"
 };
 
+/*
+ * Award-wining version of itostr modified to only handle the range that concern us
+ */
 template <typename U>
 char* itostr(U val, char *s) {
     if (val == 0) {
