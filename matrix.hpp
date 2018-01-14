@@ -14,33 +14,46 @@ template <typename T>
 class matrix {
 public:
     using node = T;
-private:
-    std::vector<std::vector<node, boost::simd::allocator<node>>, boost::simd::allocator<std::vector<node, boost::simd::allocator<node>>>> flat_buffer;
-
 public:
+    std::vector<T, boost::simd::allocator<T>> flat_buffer;
+    T* data;
 
     int height;
     int width;
+    int o_width;
 
-    matrix(int height, int width) : flat_buffer(height, std::vector<node, boost::simd::allocator<node>>(width)), height(height), width(width) { }
+    matrix(int height, int width, T* data) : flat_buffer(), data(data), height(height), width(width), o_width(width) {}
+    matrix(int height, int width) : flat_buffer(height * width), data(flat_buffer.data()), height(height), width(width), o_width(width) {}
 
-    matrix(matrix const& other) = delete;
-    matrix(matrix &&other) noexcept : flat_buffer(std::move(other.flat_buffer)),
-                                      height(other.height), width(other.width) {};
+    matrix(matrix const &other) = delete;
 
-    matrix &operator=(matrix const& other) = delete;
+    matrix(matrix &&other) noexcept : flat_buffer(other.flat_buffer),
+                                      height(other.height), width(other.width), o_width(width) {};
+
+    matrix &operator=(matrix const &other) = delete;
+
     matrix &operator=(matrix &&other) noexcept {
-        flat_buffer = std::move(other.flat_buffer);
+        flat_buffer = other.flat_buffer;
         height = other.height;
         width = other.width;
+        o_width = other.o_width;
         return *this;
     }
 
-    inline T at(int y, int x) const { return flat_buffer[y][x]; }
-    inline T& at(int y, int x) { return flat_buffer[y][x]; }
+    inline T at(int y, int x) const { return data[y * o_width + x]; }
 
-    inline std::vector<node, boost::simd::allocator<node>> const& row_at(int y) const { return flat_buffer[y]; };
-    inline std::vector<node, boost::simd::allocator<node>>& row_at(int y) { return flat_buffer[y]; };
+    inline T &at(int y, int x) { return data[y * o_width + x]; }
+
+    inline node const *row_at(int y) const { return &data[y * o_width]; };
+
+    inline node *row_at(int y) { return &data[y * o_width]; };
+
+    inline void erase(int y, int x) {
+        std::rotate(data + (y * o_width + x), data + (y * o_width + x) + 1,
+                    data + ((y + 1) * o_width + 0));
+    }
 };
+
+//
 
 #endif //DIRECTORY_TEST_MATRIX_HPP
